@@ -54,6 +54,77 @@ void CalcLoadAddressRange(Elf64_Ehdr *ehdr, UINT64 *first, UINT64 *last)
 	return;
 }
 
+void CopyLoadSegments(EFI_SYSTEM_TABLE *ST, Elf64_Ehdr *ehdr)
+{
+	Elf64_Phdr *phdr = (Elf64_Phdr *)((UINT64)ehdr + ehdr->e_phoff);
+
+	for(Elf64_Half i = 0; i < ehdr->e_phnum; ++i){
+		if(phdr[i].p_type != PT_LOAD) continue;
+
+		UINT64 segm_in_file = (UINT64)ehdr + phdr[i].p_offset;
+		ST->BootServices->CopyMem((VOID *)phdr[i].p_vaddr, (VOID *)segm_in_file, phdr[i].p_filesz);
+
+		UINTN remain_bytes = phdr[i].p_memsz - phdr[i].p_filesz;
+		ST->BootServices->SetMem((VOID *)(phdr[i].p_vaddr + phdr[i].p_filesz), remain_bytes, 0);
+	}
+}
+
+void PrintMemoryType(UINT32 Type)
+{
+	switch(Type){
+		case EfiReservedMemoryType:
+			print(L"EfiReservedMemoryType");
+			break;
+		case EfiLoaderCode:
+			print(L"EfiLoaderCode");
+			break;
+		case EfiLoaderData:
+			print(L"EfiLoaderData");
+			break;
+		case EfiBootServicesCode:
+			print(L"EfiBootServicesCode");
+			break;
+		case EfiBootServicesData:
+			print(L"EfiBootServicesData");
+			break;
+		case EfiRuntimeServicesCode:
+			print(L"EfiRuntimeServicesCode");
+			break;
+		case EfiRuntimeServicesData:
+			print(L"EfiRuntimeServicesData");
+			break;
+		case EfiConvertionalMemory:
+			print(L"EfiConvertionalMemory");
+			break;
+		case EfiUnusableMemory:
+			print(L"EfiUnusableMemory");
+			break;
+		case EfiACPIReclaimMemory:
+			print(L"EfiACPIReclaimMemory");
+			break;
+		case EfiACPIMemoryNVS:
+			print(L"EfiACPIMemoryNVS");
+			break;
+		case EfiMemoryMappedIO:
+			print(L"EfiMemoryMappedIO");
+			break;
+		case EfiMemoryMappedIOPortSpace:
+			print(L"EfiMemoryMappedIOPortSpace");
+			break;
+		case EfiPalCode:
+			print(L"EfiPalCode");
+			break;
+		case EfiPersistentMemory:
+			print(L"EfiPersistentMemory");
+			break;
+		case EfiMaxMemoryType:
+			print(L"EfiMaxMemoryType");
+			break;
+	}
+
+	return;
+}
+
 EFI_STATUS loader_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 {
 	EFI_STATUS Status;
@@ -71,6 +142,11 @@ EFI_STATUS loader_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	CHAR8 *Buffer;
 	Elf64_Ehdr *kernel_elfhdr;
 	UINT64 kernel_start, kernel_end;
+	UINTN MemoryMapSize = sizeof(EFI_MEMORY_DESCRIPTOR);
+	EFI_MEMORY_DESCRIPTOR *pMemoryMap = NULL;
+	UINTN MapKey = 0;
+	UINTN DescriptorSize = MemoryMapSize;
+	UINT32 DescriptorVersion;
 
 	ConOut = SystemTable->ConOut;
 
@@ -187,10 +263,64 @@ EFI_STATUS loader_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 		print(L"\r\npages allocate error.");
 	}
 
+	CopyLoadSegments(SystemTable, kernel_elfhdr);
+
 	SystemTable->BootServices->FreePool(Buffer);
+
+	Status = SystemTable->BootServices->GetMemoryMap(&MemoryMapSize, pMemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
+
+chkerr:
+	if(Status != EFI_SUCCESS){
+		if(Status != EFI_BUFFER_TOO_SMALL){
+			print(L"\r\nmemory map get error.");
+			print(L" ");
+			while(1);
+		}else{
+			SystemTable->BootServices->AllocatePool(EfiLoaderData, MemoryMapSize, (VOID **)&pMemoryMap);
+			Status = SystemTable->BootServices->GetMemoryMap(&MemoryMapSize, pMemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
+			goto chkerr;
+		}
+	}
+
+	print(L"\r\n");
+
+	EFI_PHYSICAL_ADDRESS iter;
+
+	for(iter = (EFI_PHYSICAL_ADDRESS)pMemoryMap, i = 0; iter < (EFI_PHYSICAL_ADDRESS)pMemoryMap + MemoryMapSize && i < 10; iter += DescriptorSize, i++){
+		EFI_MEMORY_DESCRIPTOR *desc = (EFI_MEMORY_DESCRIPTOR *)iter;
+
+		PrintMemoryType(desc->Type);
+		print(L" ");
+		sethex(s, desc->PhysicalStart, 17);
+		print(s);
+		print(L" ");
+		sethex(s, desc->VirtualStart, 17);
+		print(s);
+		print(L" ");
+		sethex(s, desc->NumberOfPages, 17);
+		print(s);
+		print(L" ");
+		print(L"\r\n");
+	}
 
 	/* GOP描画テスト 矩形描画 */
 	fillrect(GOP, 50, 50, 100, 100, 0x00, 0xff, 0x00);
+
+	Status = SystemTable->BootServices->ExitBootServices(ImageHandle, MapKey);
+	if(Status != EFI_SUCCESS){
+		SystemTable->BootServices->GetMemoryMap(&MemoryMapSize, pMemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
+		Status = SystemTable->BootServices->ExitBootServices(ImageHandle, MapKey);
+
+		if(Status != EFI_SUCCESS){
+			print(L"ExitBootServices Error");
+			while(1);
+		}
+	}
+
+	print(L"ExitBootServices Success!");
+
+	sethex(s, Status, 17);
+	print(s);
 
 	Status = SystemTable->ConIn->Reset(SystemTable->ConIn, FALSE);
 	if(Status != EFI_SUCCESS) return Status;
