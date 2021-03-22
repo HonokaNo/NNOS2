@@ -5,7 +5,7 @@ kernel.bin: kernel.o
 	ld -e kernel_main -z norelro -T linker.ld -o $@ $<
 
 BOOTX64.EFI: loader.c lib.c
-	x86_64-w64-mingw32-gcc -Wall -Wextra -nostdinc -nostdlib -fno-builtin -Wl,--subsystem,10 -e $(ENTRY_POINT) -o $@ $+
+	x86_64-w64-mingw32-gcc -Wall -Wextra -nostdlib -nostdinc -ffreestanding -mno-red-zone -Wl,--subsystem,10 -e $(ENTRY_POINT) -o $@ $+
 
 %.o: %.c
 	gcc -Wall -Wextra -nostdinc -nostdlib -fno-builtin -c -o $*.o $*.c

@@ -128,7 +128,6 @@ void PrintMemoryType(UINT32 Type)
 EFI_STATUS loader_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 {
 	EFI_STATUS Status;
-	EFI_INPUT_KEY Key;
 	EFI_GUID GOP_GUID = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
 	EFI_GRAPHICS_OUTPUT_PROTOCOL *GOP;
 	EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *info;
@@ -306,6 +305,16 @@ chkerr:
 	/* GOP描画テスト 矩形描画 */
 	fillrect(GOP, 50, 50, 100, 100, 0x00, 0xff, 0x00);
 
+	sethex(s, kernel_start, 17);
+	print(s);
+
+	print(L"\r\n");
+
+	UINT64 kernel_addr = *(UINT64 *)(kernel_start + 24);
+
+	sethex(s, kernel_addr, 17);
+	print(s);
+
 	Status = SystemTable->BootServices->ExitBootServices(ImageHandle, MapKey);
 	if(Status != EFI_SUCCESS){
 		SystemTable->BootServices->GetMemoryMap(&MemoryMapSize, pMemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
@@ -317,18 +326,11 @@ chkerr:
 		}
 	}
 
-	print(L"ExitBootServices Success!");
+	typedef void kernel_main(UINT32 width, UINT32 height, char *vram);
+	kernel_main *kernel = (kernel_main *)kernel_addr;
+	kernel(GOP->Mode->Info->HorizontalResolution, GOP->Mode->Info->VerticalResolution, (char *)GOP->Mode->FrameBufferBase);
 
-	sethex(s, Status, 17);
-	print(s);
-
-	Status = SystemTable->ConIn->Reset(SystemTable->ConIn, FALSE);
-	if(Status != EFI_SUCCESS) return Status;
-
-	for(;;){
-		Status = SystemTable->ConIn->ReadKeyStroke(SystemTable->ConIn, &Key);
-		if(Status != EFI_NOT_READY) break;
-	}
+	while(1);
 
 	return Status;
 }
