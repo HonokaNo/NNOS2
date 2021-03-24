@@ -1,17 +1,21 @@
-void kernel_main(unsigned int width, unsigned int height, char *buffer)
+struct pixel
 {
-	unsigned int i, j;
+	unsigned char blue;
+	unsigned char green;
+	unsigned char red;
+	unsigned char reserved;
+};
 
-	for(i = 0; i < height; i++){
-		for(j = 0; j < width; j++){
-			buffer[0] = 0xff;
-			buffer[1] = 0xff;
-			buffer[2] = 0xff;
-			buffer[3] = 0xff;
+void kernel_main(unsigned long long buffer, unsigned long long size)
+{
+	unsigned char *vram = (unsigned char *)buffer;
+//	unsigned int i;
 
-			buffer += 4;
-		}
-	}
+	vram[0] = 0xff;
+
+//	for(i = 0; i < size; i++){
+//		vram[i] = 0xff;
+//	}
 
 	while(1) __asm__("hlt");
 }

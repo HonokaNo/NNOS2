@@ -146,6 +146,8 @@ EFI_STATUS loader_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	UINTN MapKey = 0;
 	UINTN DescriptorSize = MemoryMapSize;
 	UINT32 DescriptorVersion;
+	UINT32 Width, Height;
+	UINT64 VramAddr, VramSize;
 
 	ConOut = SystemTable->ConOut;
 
@@ -216,6 +218,11 @@ EFI_STATUS loader_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 		setdec(s, GOP->Mode->Info->PixelsPerScanLine, 5);
 		print(s);
 		print(L"\r\n");
+
+		Width = GOP->Mode->Info->HorizontalResolution;
+		Height = GOP->Mode->Info->VerticalResolution;
+		VramAddr = GOP->Mode->FrameBufferBase;
+		VramSize = GOP->Mode->FrameBufferSize;
 	}else{
 		print(L"unable to set mode:");
 		setdec(s, mode, 4);
@@ -236,7 +243,7 @@ EFI_STATUS loader_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 
 	kernel_elfhdr = (Elf64_Ehdr *)Buffer;
 
-	print(L"Magic[0]:");
+/*	print(L"Magic[0]:");
 	sethex(s, kernel_elfhdr->e_ident[0], 3);
 	print(s);
 	print(L" Magic[1]:");
@@ -247,7 +254,7 @@ EFI_STATUS loader_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 	print(s);
 	print(L" Magic[3]:");
 	sethex(s, kernel_elfhdr->e_ident[3], 3);
-	print(s);	
+	print(s);*/
 
 	CalcLoadAddressRange(kernel_elfhdr, &kernel_start, &kernel_end);
 
@@ -264,12 +271,21 @@ EFI_STATUS loader_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 
 	CopyLoadSegments(SystemTable, kernel_elfhdr);
 
+	print(L"\r\n");
+
+	UINT64 kernel_addr = kernel_elfhdr->e_entry;
+
+	print(L"kernel_addr:");
+	sethex(s, kernel_addr, 17);
+	print(s);
+	print(L"\r\n");
+
 	SystemTable->BootServices->FreePool(Buffer);
 
-	Status = SystemTable->BootServices->GetMemoryMap(&MemoryMapSize, pMemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
+//	Status = SystemTable->BootServices->GetMemoryMap(&MemoryMapSize, pMemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
 
 chkerr:
-	if(Status != EFI_SUCCESS){
+/*	if(Status != EFI_SUCCESS){
 		if(Status != EFI_BUFFER_TOO_SMALL){
 			print(L"\r\nmemory map get error.");
 			print(L" ");
@@ -279,13 +295,11 @@ chkerr:
 			Status = SystemTable->BootServices->GetMemoryMap(&MemoryMapSize, pMemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
 			goto chkerr;
 		}
-	}
+	}*/
 
-	print(L"\r\n");
+//	EFI_PHYSICAL_ADDRESS iter;
 
-	EFI_PHYSICAL_ADDRESS iter;
-
-	for(iter = (EFI_PHYSICAL_ADDRESS)pMemoryMap, i = 0; iter < (EFI_PHYSICAL_ADDRESS)pMemoryMap + MemoryMapSize && i < 10; iter += DescriptorSize, i++){
+/*	for(iter = (EFI_PHYSICAL_ADDRESS)pMemoryMap, i = 0; iter < (EFI_PHYSICAL_ADDRESS)pMemoryMap + MemoryMapSize && i < 10; iter += DescriptorSize, i++){
 		EFI_MEMORY_DESCRIPTOR *desc = (EFI_MEMORY_DESCRIPTOR *)iter;
 
 		PrintMemoryType(desc->Type);
@@ -300,20 +314,13 @@ chkerr:
 		print(s);
 		print(L" ");
 		print(L"\r\n");
-	}
+	}*/
 
 	/* GOP描画テスト 矩形描画 */
-	fillrect(GOP, 50, 50, 100, 100, 0x00, 0xff, 0x00);
+//	fillrect(GOP, 50, 50, 100, 100, 0x00, 0xff, 0x00);
 
-	sethex(s, kernel_start, 17);
-	print(s);
-
-	print(L"\r\n");
-
-	UINT64 kernel_addr = *(UINT64 *)(kernel_start + 24);
-
-	sethex(s, kernel_addr, 17);
-	print(s);
+//	sethex(s, VramAddr, 17);
+//	print(s);
 
 	Status = SystemTable->BootServices->ExitBootServices(ImageHandle, MapKey);
 	if(Status != EFI_SUCCESS){
@@ -326,11 +333,9 @@ chkerr:
 		}
 	}
 
-	typedef void kernel_main(UINT32 width, UINT32 height, char *vram);
+	typedef void kernel_main(UINT64 vram, UINT64 size);
 	kernel_main *kernel = (kernel_main *)kernel_addr;
-	kernel(GOP->Mode->Info->HorizontalResolution, GOP->Mode->Info->VerticalResolution, (char *)GOP->Mode->FrameBufferBase);
-
-	while(1);
+	kernel(VramAddr, VramSize);
 
 	return Status;
 }
