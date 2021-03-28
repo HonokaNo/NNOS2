@@ -1,3 +1,5 @@
+#include "./lib/header/stdint.h"
+
 struct pixel
 {
 	unsigned char blue;
@@ -6,16 +8,13 @@ struct pixel
 	unsigned char reserved;
 };
 
-void kernel_main(unsigned long long buffer, unsigned long long size)
+void kernel_main(uint64_t vadr)
 {
-	unsigned char *vram = (unsigned char *)buffer;
-//	unsigned int i;
+	struct pixel *pixels = (struct pixel *)vadr;
 
-	vram[0] = 0xff;
+//	while(1);
 
-//	for(i = 0; i < size; i++){
-//		vram[i] = 0xff;
-//	}
+	pixels[0].red = 0xff;
 
 	while(1) __asm__("hlt");
 }

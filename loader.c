@@ -50,8 +50,6 @@ void CalcLoadAddressRange(Elf64_Ehdr *ehdr, UINT64 *first, UINT64 *last)
 		*first = MIN(*first, phdr[i].p_vaddr);
 		*last = MAX(*last, phdr[i].p_vaddr + phdr[i].p_memsz);
 	}
-
-	return;
 }
 
 void CopyLoadSegments(EFI_SYSTEM_TABLE *ST, Elf64_Ehdr *ehdr)
@@ -93,8 +91,8 @@ void PrintMemoryType(UINT32 Type)
 		case EfiRuntimeServicesData:
 			print(L"EfiRuntimeServicesData");
 			break;
-		case EfiConvertionalMemory:
-			print(L"EfiConvertionalMemory");
+		case EfiConventionalMemory:
+			print(L"EfiConventionalMemory");
 			break;
 		case EfiUnusableMemory:
 			print(L"EfiUnusableMemory");
@@ -124,6 +122,8 @@ void PrintMemoryType(UINT32 Type)
 
 	return;
 }
+
+void kernel_main(uint32_t x, uint32_t y);
 
 EFI_STATUS loader_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 {
@@ -275,17 +275,17 @@ EFI_STATUS loader_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 
 	UINT64 kernel_addr = kernel_elfhdr->e_entry;
 
-	print(L"kernel_addr:");
-	sethex(s, kernel_addr, 17);
-	print(s);
-	print(L"\r\n");
+//	print(L"kernel_addr:");
+//	sethex(s, kernel_addr, 17);
+//	print(s);
+//	print(L"\r\n");
 
 	SystemTable->BootServices->FreePool(Buffer);
 
-//	Status = SystemTable->BootServices->GetMemoryMap(&MemoryMapSize, pMemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
+	Status = SystemTable->BootServices->GetMemoryMap(&MemoryMapSize, pMemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
 
 chkerr:
-/*	if(Status != EFI_SUCCESS){
+	if(Status != EFI_SUCCESS){
 		if(Status != EFI_BUFFER_TOO_SMALL){
 			print(L"\r\nmemory map get error.");
 			print(L" ");
@@ -295,7 +295,7 @@ chkerr:
 			Status = SystemTable->BootServices->GetMemoryMap(&MemoryMapSize, pMemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
 			goto chkerr;
 		}
-	}*/
+	}
 
 //	EFI_PHYSICAL_ADDRESS iter;
 
@@ -317,7 +317,7 @@ chkerr:
 	}*/
 
 	/* GOP描画テスト 矩形描画 */
-//	fillrect(GOP, 50, 50, 100, 100, 0x00, 0xff, 0x00);
+	fillrect(GOP, 50, 50, 100, 100, 0x00, 0xff, 0x00);
 
 //	sethex(s, VramAddr, 17);
 //	print(s);
@@ -333,9 +333,9 @@ chkerr:
 		}
 	}
 
-	typedef void kernel_main(UINT64 vram, UINT64 size);
+	typedef void kernel_main(uint64_t);
 	kernel_main *kernel = (kernel_main *)kernel_addr;
-	kernel(VramAddr, VramSize);
+	kernel(GOP->Mode->FrameBufferBase);
 
 	return Status;
 }

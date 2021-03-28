@@ -431,7 +431,7 @@ enum _EFI_MEMORY_TYPE
 	EfiBootServicesData,
 	EfiRuntimeServicesCode,
 	EfiRuntimeServicesData,
-	EfiConvertionalMemory,
+	EfiConventionalMemory,
 	EfiUnusableMemory,
 	EfiACPIReclaimMemory,
 	EfiACPIMemoryNVS,
@@ -595,7 +595,7 @@ struct _EFI_GRAPHICS_OUTPUT_PROTOCOL
 		IN EFI_GRAPHICS_OUTPUT_PROTOCOL *This,
 		IN UINT32 ModeNumber,
 		OUT UINTN *SizeOfInfo,
-		OUT EFI_GRAPHICS_OUTPUT_MODE_INFORMATION **Info;
+		OUT EFI_GRAPHICS_OUTPUT_MODE_INFORMATION **Info
 	);
 	EFI_STATUS (*SetMode)(
 		IN EFI_GRAPHICS_OUTPUT_PROTOCOL *This,
@@ -629,7 +629,7 @@ enum _EFI_GRAPHICS_PIXEL_FORMAT
 	PixelRedGreenBlueReserved8BitPerColor,
 	PixelBlueGreenRedReserved8BitPerColor,
 	PixelBitMask,
-	PixelBitOnly,
+	PixelBltOnly,
 	PixelFormatMax
 };
 
@@ -674,7 +674,7 @@ struct _EFI_SIMPLE_TEXT_INPUT_PROTOCOL
 {
 	EFI_STATUS (*Reset)(
 		IN EFI_SIMPLE_TEXT_INPUT_PROTOCOL *This,
-		IN BOOLEAN ExtendedVerification;
+		IN BOOLEAN ExtendedVerification
 	);
 	EFI_STATUS (*ReadKeyStroke)(
 		IN EFI_SIMPLE_TEXT_INPUT_PROTOCOL *This,

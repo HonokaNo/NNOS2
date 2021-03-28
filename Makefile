@@ -10,14 +10,13 @@ img: BOOTX64.EFI kernel.bin Makefile
 	mcopy -i fat.img $< ::/EFI/BOOT
 
 BOOTX64.EFI: loader.c lib.c
-	x86_64-w64-mingw32-gcc -Wall -Wextra -nostdlib -nostdinc -ffreestanding -mno-red-zone -Wl,--subsystem,10 -e $(ENTRY_POINT) -o $@ $+
+	x86_64-w64-mingw32-gcc -Wall -Wextra -nostdlib -nostdinc -ffreestanding -mno-red-zone -Wl,--subsystem,10 -m64 -shared -Wl,-Bsymbolic -mabi=ms -mgeneral-regs-only -fpic -fno-stack-protector -e $(ENTRY_POINT) -o $@ $+
 
 kernel.bin: kernel.o Makefile
 	ld.lld -e kernel_main -z norelro --image-base 0x100000 --static -o $@ $<
-#	ld -e kernel_main -z norelro -T linker.ld -o $@ $<
 
 %.o: %.c Makefile
-	gcc -Wall -Wextra -nostdinc -nostdlib -fno-builtin -O0 -c -o $*.o $*.c
+	gcc -Wall -Wextra -nostdlib -nostdinc -ffreestanding -mno-red-zone -Wl,--subsystem,10 -m64 -shared -Wl,-Bsymbolic -mabi=ms -mgeneral-regs-only -fpic -fno-stack-protector -c -o $*.o $*.c
 
 run: img
 	qemu-system-x86_64 -m 4G -bios OVMF.fd -hda fat.img -monitor stdio
